@@ -23,7 +23,7 @@ type Queue struct {
 	db         *sql.DB            // The SQL database connection used by the queue.
 	ctx        context.Context    // Context for managing request-scoped values and cancellation signals.
 	cancelFunc context.CancelFunc // Cancellation function for the context
-	clb        func(item Item, breaked func())
+	clb        func(item Item, delay func(sec time.Duration))
 
 	mx sync.Mutex // Mutex to ensure thread-safe operations on the queue.
 }
@@ -65,7 +65,7 @@ func New(config ...Config) (*Queue, error) {
 		db:         db,
 		ctx:        ctx,
 		cancelFunc: cancelFunc,
-		clb:        func(item Item, breaked func()) {},
+		clb:        func(item Item, delay func(sec time.Duration)) {},
 	}
 
 	go c.process()
@@ -121,7 +121,7 @@ func (c *Queue) Delete(id int) error {
 	return err
 }
 
-func (c *Queue) Listener(clb func(item Item, breaked func())) {
+func (c *Queue) Listener(clb func(item Item, delay func(sec time.Duration))) {
 	c.clb = clb
 }
 
@@ -153,16 +153,16 @@ func (c *Queue) process() {
 
 			if len(items) > 0 {
 				for _, item := range items {
-					isBroke := false
-					broken := func() {
-						isBroke = true
+					var delay time.Duration
+					broken := func(sec time.Duration) {
+						delay = sec
 					}
 
 					c.clb(item, broken)
 
-					if isBroke {
+					if delay > 0 {
 						fmt.Println("Processing broke, sleeping for 30 seconds")
-						time.Sleep(30 * time.Second)
+						time.Sleep(delay)
 					}
 				}
 			} else {

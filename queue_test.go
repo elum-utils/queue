@@ -135,7 +135,7 @@ func TestCallbackInvocation(t *testing.T) {
 	callbackInvocations := make(chan Item, 2)
 
 	// Set the callback function
-	queue.Listener(func(item Item, broken func()) {
+	queue.Listener(func(item Item, delay func(sec time.Duration)) {
 		callbackInvocations <- item
 	})
 
